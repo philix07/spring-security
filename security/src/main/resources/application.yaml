@@ -1,12 +1,18 @@
 spring:
   application:
     name: ${SPRING_APP_NAME:security}
-  security:
-    user:
-      # if environment variable of "SECURITY_USERNAME" is provided
-      # then it will be used else it will use "felix"
-      name: ${SECURITY_USERNAME:felix}
-      password: ${SECURITY_PASSWORD:felix123}
+  datasource:
+    url: jdbc:mysql://${DATABASE_HOST:localhost}:${DATABASE_PORT:3310}/${DATABASE_NAME:bank-security}
+    username: ${DATABASE_USERNAME:root}
+    password: ${DATABASE_PASSWORD:root}
+  jpa:
+    # We only show our sql when it's not in production environment (cause it creates a lot of logs)
+    show-sql: ${JPA_SHOW_SQL:true}
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: ${HIBERNATE_FORMAT_SQL:true}
 
 logging:
   pattern:
