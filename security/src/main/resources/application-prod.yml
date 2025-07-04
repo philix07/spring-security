@@ -1,18 +1,27 @@
 spring:
   application:
     name: ${SPRING_APP_NAME:security}
+  config:
+    activate:
+      on-profile: prod
   datasource:
     url: jdbc:mysql://${DATABASE_HOST:localhost}:${DATABASE_PORT:3310}/${DATABASE_NAME:bank-security}
     username: ${DATABASE_USERNAME:root}
     password: ${DATABASE_PASSWORD:root}
   jpa:
     # We only show our sql when it's not in production environment (cause it creates a lot of logs)
-    show-sql: ${JPA_SHOW_SQL:true}
+    show-sql: ${JPA_SHOW_SQL:false}
     hibernate:
       ddl-auto: update
     properties:
       hibernate:
-        format_sql: ${HIBERNATE_FORMAT_SQL:true}
+        format_sql: ${HIBERNATE_FORMAT_SQL:false}
+
+server:
+  servlet:
+    # When a user logged in, the session only last for 2 minutes.
+    session:
+      timeout: ${SESSION_TIMEOUT:2m}
 
 logging:
   pattern:
@@ -20,5 +29,4 @@ logging:
   level:
     org:
       springframework:
-        security: ${SPRING_SECURITY_LOG_LEVEL:TRACE}
-
+        security: ${SPRING_SECURITY_LOG_LEVEL:ERROR}

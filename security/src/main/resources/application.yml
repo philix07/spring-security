@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: ${SPRING_APP_NAME:security}
+  datasource:
+    url: jdbc:mysql://${DATABASE_HOST:localhost}:${DATABASE_PORT:3310}/${DATABASE_NAME:bank-security}
+    username: ${DATABASE_USERNAME:root}
+    password: ${DATABASE_PASSWORD:root}
+  jpa:
+    # We only show our sql when it's not in production environment (cause it creates a lot of logs)
+    show-sql: ${JPA_SHOW_SQL:true}
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: ${HIBERNATE_FORMAT_SQL:true}
+  config:
+    import: application-prod.yml
+  profiles:
+    active: default
+
+server:
+  servlet:
+    # When a user logged in, the session only last for 20 minutes.
+    session:
+      timeout: ${SESSION_TIMEOUT:20m}
+
+logging:
+  pattern:
+    console: ${LOGPATTERN_CONSOLE:%green(%d{HH:mm:ss.SSS}) %blue(%-5level) %red([%thread]) %yellow(%logger{15}) - %msg%n}
+  level:
+    org:
+      springframework:
+        security: ${SPRING_SECURITY_LOG_LEVEL:TRACE}
+
