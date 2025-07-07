@@ -1,7 +1,7 @@
 package com.felix.security.config;
 
-import com.felix.security.Exception.CustomAccessDeniedHandler;
-import com.felix.security.Exception.CustomBasicAuthenticationEntryPoint;
+import com.felix.security.exception.CustomAccessDeniedHandler;
+import com.felix.security.exception.CustomBasicAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;

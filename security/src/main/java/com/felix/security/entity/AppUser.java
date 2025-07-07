@@ -1,30 +1,41 @@
 package com.felix.security.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.felix.security.entity.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Date;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
 @Table(name = "users")
-public class AppUser extends BaseEntity{
+public class AppUser extends BaseEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+  @Column(name = "customer_id")
+  private long id;
 
-  @Column(name = "email", length = 50)
+  private String name;
+
   private String email;
 
-  @Column(name = "password", length = 200)
-  private String password;
+  @Column(name = "mobile_number")
+  private String mobileNumber;
 
-  @Column(name = "role")
-  @Enumerated(EnumType.STRING)
-  private UserRole role;
+  @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+  private String pwd;
+
+  private String role;
+
+  @Column(name = "create_dt")
+  @JsonIgnore
+  private Date createDt;
 
 }
