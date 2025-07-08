@@ -13,6 +13,7 @@ import java.sql.Date;
 public class Cards {
 
   @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "card_id")
   private long cardId;
 

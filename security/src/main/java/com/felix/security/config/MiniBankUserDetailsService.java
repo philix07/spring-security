@@ -31,7 +31,7 @@ public class MiniBankUserDetailsService implements UserDetailsService {
       .orElseThrow(() -> new UsernameNotFoundException("There's no account with username: " + username));
 
     List<GrantedAuthority> grantedAuthorities = List.of(new SimpleGrantedAuthority(appUser.getRole().toString()));
-    return new User(appUser.getEmail(), appUser.getPassword(), grantedAuthorities);
+    return new User(appUser.getEmail(), appUser.getPwd(), grantedAuthorities);
   }
 
 }

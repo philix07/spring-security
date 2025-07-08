@@ -31,14 +31,14 @@ public class MinibankUsernameProdPwdAuthenticationProvider implements Authentica
     AppUser user = appUserRepository.findByEmail(username)
       .orElseThrow(() -> new BadCredentialsException("User not found"));
 
-    if (!passwordEncoder.matches(rawPassword, user.getPassword())) {
+    if (!passwordEncoder.matches(rawPassword, user.getPwd())) {
       throw new BadCredentialsException("Invalid password");
     }
 
     // You can return multiple authorities if needed
     return new UsernamePasswordAuthenticationToken(
       user.getEmail(),
-      user.getPassword(),
+      user.getPwd(),
       Collections.singletonList(new SimpleGrantedAuthority(user.getRole().toString()))
     );
   }
