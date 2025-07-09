@@ -2,14 +2,18 @@ package com.felix.security.config;
 
 import com.felix.security.exception.CustomAccessDeniedHandler;
 import com.felix.security.exception.CustomBasicAuthenticationEntryPoint;
+import com.felix.security.filter.CsrfCookieFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -27,33 +31,53 @@ public class ProjectSecurityConfig {
     CsrfTokenRequestAttributeHandler csrfTokenRequestAttributeHandler = new CsrfTokenRequestAttributeHandler();
 
     http
+      .csrf(csrfConfig -> csrfConfig
+        // 👇 Specifies a custom handler for resolving CSRF tokens from the request.
+        // Useful for advanced scenarios like SPAs that need to access the token in a non-standard way.
+        .csrfTokenRequestHandler(csrfTokenRequestAttributeHandler)
+
+        // 👇 Disables CSRF protection for specific endpoints (e.g., public forms).
+        // These paths can be safely excluded if they don't modify state or if other protection is in place.
+        .ignoringRequestMatchers("/contact", "/register")
+
+        // 👇 Stores the CSRF token in a cookie so it can be accessed by frontend JavaScript (HttpOnly=false).
+        // This is commonly used in single-page applications (e.g., Angular, React) to read the token
+        // and include it in custom headers (like `X-XSRF-TOKEN`) on each request.
+        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+      )
+      .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
+      .securityContext(contextConfig -> contextConfig
+        // let Spring auto-save the security info (like login data) to the session.
+        .requireExplicitSave(false)
+      )
       .cors(corsConfig -> corsConfig
-        .configurationSource(
-          new CorsConfigurationSource() {
-            @Override
-            public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
-              CorsConfiguration config = new CorsConfiguration();
-              // Allow only requests coming from this specific origin (e.g., Angular frontend running locally)
-              config.setAllowedOrigins(Collections.singletonList("http://localhost:4200"));
+        .configurationSource(new CorsConfigurationSource() {
+          @Override
+          public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
+            CorsConfiguration config = new CorsConfiguration();
+            // Allow only requests coming from this specific origin (e.g., Angular frontend running locally)
+            config.setAllowedOrigins(Collections.singletonList("http://localhost:4200"));
 
-              // Allow all HTTP methods (GET, POST, PUT, DELETE, etc.)
-              // In production, it's safer to list only the methods you want to allow
-              config.setAllowedMethods(Collections.singletonList("*"));
+            // Allow all HTTP methods (GET, POST, PUT, DELETE, etc.)
+            // In production, it's safer to list only the methods you want to allow
+            config.setAllowedMethods(Collections.singletonList("*"));
 
-              // Allow credentials (cookies, authorization headers) to be sent with requests
-              config.setAllowCredentials(true);
+            // Allow credentials (cookies, authorization headers) to be sent with requests
+            config.setAllowCredentials(true);
 
-              // Allow all headers (e.g., Content-Type, Authorization, etc.)
-              config.setAllowedHeaders(Collections.singletonList("*"));
+            // Allow all headers (e.g., Content-Type, Authorization, etc.)
+            config.setAllowedHeaders(Collections.singletonList("*"));
 
-              // Cache the CORS response for 3600 seconds (1 hour) to reduce preflight requests
-              config.setMaxAge(3600L);
-              return config;
-            }
+            // Cache the CORS response for 3600 seconds (1 hour) to reduce preflight requests
+            config.setMaxAge(3600L);
+            return config;
           }
-        )
+        })
       )
       .sessionManagement(smc -> smc
+        // tells Spring to always create a session if it doesn't exist yet,
+        // even for unauthenticated users.
+        .sessionCreationPolicy(SessionCreationPolicy.ALWAYS)
         // in real project we're suppose to build an actual HTML pages to show more
         // details to the end user when an session has ended.
         .invalidSessionUrl("/invalidSession")
@@ -61,11 +85,9 @@ public class ProjectSecurityConfig {
         .maximumSessions(3)
       )
       .authorizeHttpRequests(requests -> requests
-        .requestMatchers("/accounts", "/cards", "/loans", "/balances").authenticated()
-        .requestMatchers("/notices", "/contacts", "/error", "/register", "/invalidSession").permitAll()
+        .requestMatchers("/myAccount", "/myBalance", "/myLoans", "/myCards", "/user").authenticated()
+        .requestMatchers("/notices", "/contact", "/error", "/register", "/invalidSession").permitAll()
       )
-
-      .csrf(csrfConfig -> csrfConfig.disable())
       .formLogin(withDefaults())
       .httpBasic(hbc -> hbc
         .authenticationEntryPoint(new CustomBasicAuthenticationEntryPoint())
