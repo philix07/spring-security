@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Date;
+import java.util.Set;
 
 @Data
 @AllArgsConstructor
@@ -38,4 +39,7 @@ public class AppUser {
   @JsonIgnore
   private Date createDt;
 
+  @OneToMany(mappedBy = "customer", fetch = FetchType.EAGER)
+  @JsonIgnore
+  private Set<Authority> authorities;
 }

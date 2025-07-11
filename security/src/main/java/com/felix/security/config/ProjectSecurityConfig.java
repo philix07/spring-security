@@ -31,6 +31,14 @@ public class ProjectSecurityConfig {
     CsrfTokenRequestAttributeHandler csrfTokenRequestAttributeHandler = new CsrfTokenRequestAttributeHandler();
 
     http
+      .authorizeHttpRequests(requests -> requests
+        .requestMatchers("/myAccount").hasRole("USER")
+        .requestMatchers("/myBalance").hasAnyRole("USER", "ADMIN")
+        .requestMatchers("/myLoans").hasRole("USER")
+        .requestMatchers("/myCards").hasRole("USER")
+        .requestMatchers("/user").authenticated()
+        .requestMatchers("/notices", "/contact", "/error", "/register", "/invalidSession").permitAll()
+      )
       .csrf(csrfConfig -> csrfConfig
         // 👇 Specifies a custom handler for resolving CSRF tokens from the request.
         // Useful for advanced scenarios like SPAs that need to access the token in a non-standard way.
@@ -84,10 +92,7 @@ public class ProjectSecurityConfig {
         // only 3 concurrent session can created at a time
         .maximumSessions(3)
       )
-      .authorizeHttpRequests(requests -> requests
-        .requestMatchers("/myAccount", "/myBalance", "/myLoans", "/myCards", "/user").authenticated()
-        .requestMatchers("/notices", "/contact", "/error", "/register", "/invalidSession").permitAll()
-      )
+
       .formLogin(withDefaults())
       .httpBasic(hbc -> hbc
         .authenticationEntryPoint(new CustomBasicAuthenticationEntryPoint())

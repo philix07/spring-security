@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -19,18 +20,16 @@ public class MiniBankUserDetailsService implements UserDetailsService {
 
   private final AppUserRepository appUserRepository;
 
-  /**
-   * @param username the username identifying the user's email whose data is required.
-   * @return UserDetails
-   * @throws UsernameNotFoundException
-   */
   @Override
   public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
     AppUser appUser = appUserRepository
       .findByEmail(username)
       .orElseThrow(() -> new UsernameNotFoundException("There's no account with username: " + username));
 
-    List<GrantedAuthority> grantedAuthorities = List.of(new SimpleGrantedAuthority(appUser.getRole().toString()));
+    List<GrantedAuthority> grantedAuthorities = appUser.getAuthorities().stream()
+      .map(authority -> new SimpleGrantedAuthority(authority.getName()))
+      .collect(Collectors.toList());
+
     return new User(appUser.getEmail(), appUser.getPwd(), grantedAuthorities);
   }
 
