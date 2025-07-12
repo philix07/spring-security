@@ -2,7 +2,10 @@ package com.felix.security.config;
 
 import com.felix.security.exception.CustomAccessDeniedHandler;
 import com.felix.security.exception.CustomBasicAuthenticationEntryPoint;
+import com.felix.security.filter.AuthoritiesLoggingAfterFilter;
+import com.felix.security.filter.AuthoritiesLoggingAtFilter;
 import com.felix.security.filter.CsrfCookieFilter;
+import com.felix.security.filter.RequestValidationBeforeFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,6 +34,9 @@ public class ProjectSecurityConfig {
     CsrfTokenRequestAttributeHandler csrfTokenRequestAttributeHandler = new CsrfTokenRequestAttributeHandler();
 
     http
+      .addFilterBefore(new RequestValidationBeforeFilter(), BasicAuthenticationFilter.class)
+      .addFilterAfter(new AuthoritiesLoggingAfterFilter(), BasicAuthenticationFilter.class)
+      .addFilterAt(new AuthoritiesLoggingAtFilter(), BasicAuthenticationFilter.class)
       .authorizeHttpRequests(requests -> requests
         .requestMatchers("/myAccount").hasRole("USER")
         .requestMatchers("/myBalance").hasAnyRole("USER", "ADMIN")
