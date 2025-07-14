@@ -2,7 +2,7 @@ package com.felix.security.config;
 
 import com.felix.security.exception.CustomAccessDeniedHandler;
 import com.felix.security.exception.CustomBasicAuthenticationEntryPoint;
-import com.felix.security.filter.CsrfCookieFilter;
+import com.felix.security.filter.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,6 +20,7 @@ import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.Collections;
 
 import static org.springframework.security.config.Customizer.withDefaults;
@@ -33,6 +34,19 @@ public class ProjectSecurityProdConfig {
     CsrfTokenRequestAttributeHandler csrfTokenRequestAttributeHandler = new CsrfTokenRequestAttributeHandler();
 
     http
+      .addFilterAfter(new JWTTokenGeneratorFilter(), BasicAuthenticationFilter.class)
+      .addFilterBefore(new JWTTokenValidatorFilter(), BasicAuthenticationFilter.class)
+      .addFilterBefore(new RequestValidationBeforeFilter(), BasicAuthenticationFilter.class)
+      .addFilterAfter(new AuthoritiesLoggingAfterFilter(), BasicAuthenticationFilter.class)
+      .addFilterAt(new AuthoritiesLoggingAtFilter(), BasicAuthenticationFilter.class)
+      .authorizeHttpRequests(requests -> requests
+        .requestMatchers("/myAccount").hasRole("USER")
+        .requestMatchers("/myBalance").hasAnyRole("USER", "ADMIN")
+        .requestMatchers("/myLoans").authenticated()
+        .requestMatchers("/myCards").hasRole("USER")
+        .requestMatchers("/user").authenticated()
+        .requestMatchers("/notices", "/contact", "/error", "/register", "/invalidSession", "/apiLogin").permitAll()
+      )
       .csrf(csrfConfig -> csrfConfig
         // 👇 Specifies a custom handler for resolving CSRF tokens from the request.
         // Useful for advanced scenarios like SPAs that need to access the token in a non-standard way.
@@ -40,7 +54,7 @@ public class ProjectSecurityProdConfig {
 
         // 👇 Disables CSRF protection for specific endpoints (e.g., public forms).
         // These paths can be safely excluded if they don't modify state or if other protection is in place.
-        .ignoringRequestMatchers("/contact", "/register")
+        .ignoringRequestMatchers("/contact", "/register", "/apiLogin")
 
         // 👇 Stores the CSRF token in a cookie so it can be accessed by frontend JavaScript (HttpOnly=false).
         // This is commonly used in single-page applications (e.g., Angular, React) to read the token
@@ -48,10 +62,7 @@ public class ProjectSecurityProdConfig {
         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
       )
       .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
-      .securityContext(contextConfig -> contextConfig
-        // let Spring auto-save the security info (like login data) to the session.
-        .requireExplicitSave(false)
-      )
+
       .cors(corsConfig -> corsConfig
         .configurationSource(new CorsConfigurationSource() {
           @Override
@@ -70,6 +81,8 @@ public class ProjectSecurityProdConfig {
             // Allow all headers (e.g., Content-Type, Authorization, etc.)
             config.setAllowedHeaders(Collections.singletonList("*"));
 
+            config.setExposedHeaders(Arrays.asList("Authorization"));
+
             // Cache the CORS response for 3600 seconds (1 hour) to reduce preflight requests
             config.setMaxAge(3600L);
             return config;
@@ -79,16 +92,12 @@ public class ProjectSecurityProdConfig {
       .sessionManagement(smc -> smc
         // tells Spring to always create a session if it doesn't exist yet,
         // even for unauthenticated users.
-        .sessionCreationPolicy(SessionCreationPolicy.ALWAYS)
+        .sessionCreationPolicy(SessionCreationPolicy.NEVER)
         // in real project we're suppose to build an actual HTML pages to show more
         // details to the end user when an session has ended.
         .invalidSessionUrl("/invalidSession")
         // only 3 concurrent session can created at a time
         .maximumSessions(3)
-      )
-      .authorizeHttpRequests(requests -> requests
-        .requestMatchers("/myAccount", "/myBalance", "/myLoans", "/myCards", "/user").authenticated()
-        .requestMatchers("/notices", "/contact", "/error", "/register", "/invalidSession").permitAll()
       )
       .formLogin(withDefaults())
       .httpBasic(hbc -> hbc
@@ -97,9 +106,6 @@ public class ProjectSecurityProdConfig {
       .exceptionHandling(ehc -> ehc
         .accessDeniedHandler(new CustomAccessDeniedHandler())
       );
-
-    //TODO: This code below is still wrong, how to secure using HTTPS?
-//    http.redirectToHttps(withDefaults());
 
     return http.build();
   }
