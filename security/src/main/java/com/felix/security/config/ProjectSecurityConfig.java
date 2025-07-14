@@ -2,10 +2,7 @@ package com.felix.security.config;
 
 import com.felix.security.exception.CustomAccessDeniedHandler;
 import com.felix.security.exception.CustomBasicAuthenticationEntryPoint;
-import com.felix.security.filter.AuthoritiesLoggingAfterFilter;
-import com.felix.security.filter.AuthoritiesLoggingAtFilter;
-import com.felix.security.filter.CsrfCookieFilter;
-import com.felix.security.filter.RequestValidationBeforeFilter;
+import com.felix.security.filter.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +18,7 @@ import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.Collections;
 
 import static org.springframework.security.config.Customizer.withDefaults;
@@ -60,10 +58,8 @@ public class ProjectSecurityConfig {
         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
       )
       .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
-      .securityContext(contextConfig -> contextConfig
-        // let Spring auto-save the security info (like login data) to the session.
-        .requireExplicitSave(false)
-      )
+      .addFilterAfter(new JWTTokenGeneratorFilter(), BasicAuthenticationFilter.class)
+      .addFilterBefore(new JWTTokenValidatorFilter(), BasicAuthenticationFilter.class)
       .cors(corsConfig -> corsConfig
         .configurationSource(new CorsConfigurationSource() {
           @Override
@@ -82,6 +78,8 @@ public class ProjectSecurityConfig {
             // Allow all headers (e.g., Content-Type, Authorization, etc.)
             config.setAllowedHeaders(Collections.singletonList("*"));
 
+            config.setExposedHeaders(Arrays.asList("Authorization"));
+
             // Cache the CORS response for 3600 seconds (1 hour) to reduce preflight requests
             config.setMaxAge(3600L);
             return config;
@@ -91,14 +89,13 @@ public class ProjectSecurityConfig {
       .sessionManagement(smc -> smc
         // tells Spring to always create a session if it doesn't exist yet,
         // even for unauthenticated users.
-        .sessionCreationPolicy(SessionCreationPolicy.ALWAYS)
+        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
         // in real project we're suppose to build an actual HTML pages to show more
         // details to the end user when an session has ended.
         .invalidSessionUrl("/invalidSession")
         // only 3 concurrent session can created at a time
         .maximumSessions(3)
       )
-
       .formLogin(withDefaults())
       .httpBasic(hbc -> hbc
         .authenticationEntryPoint(new CustomBasicAuthenticationEntryPoint())
