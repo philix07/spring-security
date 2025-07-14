@@ -7,8 +7,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -32,6 +35,8 @@ public class ProjectSecurityConfig {
     CsrfTokenRequestAttributeHandler csrfTokenRequestAttributeHandler = new CsrfTokenRequestAttributeHandler();
 
     http
+      .addFilterAfter(new JWTTokenGeneratorFilter(), BasicAuthenticationFilter.class)
+      .addFilterBefore(new JWTTokenValidatorFilter(), BasicAuthenticationFilter.class)
       .addFilterBefore(new RequestValidationBeforeFilter(), BasicAuthenticationFilter.class)
       .addFilterAfter(new AuthoritiesLoggingAfterFilter(), BasicAuthenticationFilter.class)
       .addFilterAt(new AuthoritiesLoggingAtFilter(), BasicAuthenticationFilter.class)
@@ -41,7 +46,7 @@ public class ProjectSecurityConfig {
         .requestMatchers("/myLoans").hasRole("USER")
         .requestMatchers("/myCards").hasRole("USER")
         .requestMatchers("/user").authenticated()
-        .requestMatchers("/notices", "/contact", "/error", "/register", "/invalidSession").permitAll()
+        .requestMatchers("/notices", "/contact", "/error", "/register", "/invalidSession", "/apiLogin").permitAll()
       )
       .csrf(csrfConfig -> csrfConfig
         // 👇 Specifies a custom handler for resolving CSRF tokens from the request.
@@ -50,7 +55,7 @@ public class ProjectSecurityConfig {
 
         // 👇 Disables CSRF protection for specific endpoints (e.g., public forms).
         // These paths can be safely excluded if they don't modify state or if other protection is in place.
-        .ignoringRequestMatchers("/contact", "/register")
+        .ignoringRequestMatchers("/contact", "/register", "/apiLogin")
 
         // 👇 Stores the CSRF token in a cookie so it can be accessed by frontend JavaScript (HttpOnly=false).
         // This is commonly used in single-page applications (e.g., Angular, React) to read the token
@@ -58,8 +63,7 @@ public class ProjectSecurityConfig {
         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
       )
       .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
-      .addFilterAfter(new JWTTokenGeneratorFilter(), BasicAuthenticationFilter.class)
-      .addFilterBefore(new JWTTokenValidatorFilter(), BasicAuthenticationFilter.class)
+
       .cors(corsConfig -> corsConfig
         .configurationSource(new CorsConfigurationSource() {
           @Override
@@ -89,7 +93,7 @@ public class ProjectSecurityConfig {
       .sessionManagement(smc -> smc
         // tells Spring to always create a session if it doesn't exist yet,
         // even for unauthenticated users.
-        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+        .sessionCreationPolicy(SessionCreationPolicy.NEVER)
         // in real project we're suppose to build an actual HTML pages to show more
         // details to the end user when an session has ended.
         .invalidSessionUrl("/invalidSession")
@@ -122,6 +126,20 @@ public class ProjectSecurityConfig {
     return new BCryptPasswordEncoder();
   }
 
+  @Bean
+  public AuthenticationManager authenticationManager(
+    UserDetailsService userDetailsService,
+    PasswordEncoder passwordEncoder
+  ) {
+    MinibankUsernamePwdAuthenticationProvider authenticationProvider = new MinibankUsernamePwdAuthenticationProvider(
+      userDetailsService, passwordEncoder
+    );
+
+    ProviderManager providerManager = new ProviderManager(authenticationProvider);
+    providerManager.setEraseCredentialsAfterAuthentication(false);
+
+    return providerManager;
+  }
 }
 
 
